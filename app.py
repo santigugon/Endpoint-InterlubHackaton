@@ -1,6 +1,12 @@
 from flask import Flask, request, jsonify
+from prophet_models import read_file, train_models, predict_future
+import pandas as pd
 
 app = Flask(__name__)
+
+# Load and train once at startup
+orders = read_file()
+predictions = train_models(orders)
 
 @app.route("/", methods=["GET"])
 def index():
@@ -8,18 +14,28 @@ def index():
 
 @app.route("/predict", methods=["GET"])
 def predict():
-    # Extract 'product_id' from query parameters
+    # Get parameters
     product_id = request.args.get("product_id")
+    date_str = request.args.get("date")
 
-    if product_id:
-        # Replace this with your actual model inference later
-        result = {
-            "product_id": product_id,
-            "predicted_quantity": 123.45  # dummy prediction
-        }
-        return jsonify(result)
-    else:
-        return jsonify({"error": "Missing 'product_id' query parameter"}), 400
+    if not product_id or not date_str:
+        return jsonify({"error": "Missing 'product_id' or 'date' in query params"}), 400
+
+    try:
+        # Convert date to datetime
+        date = pd.to_datetime(date_str)
+    except Exception as e:
+        return jsonify({"error": f"Invalid date format: {e}"}), 400
+
+    # Get prediction
+    result = predict_future(date, product_id, predictions)
+
+    if isinstance(result, dict) and "error" in result:
+        return jsonify(result), 404
+
+    # Convert result (DataFrame) to JSON
+    return jsonify(result.to_dict(orient="records"))
+    
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080, debug=True)
+    app.run(debug=True)
