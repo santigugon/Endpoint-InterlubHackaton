@@ -32,7 +32,15 @@ def fitProphet(product_series, confidence):
 
 def train_models(orders):
     # List of products to forecast
-    productos = ['IVP04039','IVP07165','IVP04009', 'IVP11694']
+    productos = [    'IVP04039',
+    'IVP07165',
+    'IVP04009',
+    'IVP11694',
+    'IVP11159',
+    'IVP11162',
+    'IVP07331',
+    'IVP11479',
+    'IVP07169']
     #trained_models={}
     predictions={}
 
@@ -83,3 +91,48 @@ def predict_future(date, product, predictions):
     else:
         return {"message": f"No prediction found for week of {date.date()} (week {input_week}, {input_year})"}
 
+
+import pandas as pd
+
+def give_actual_demand(date, product_id):
+    # Convert input date to datetime
+    date = pd.to_datetime(date)
+
+    # Check if the date is for a year beyond 2024
+    if date.year > 2024:
+        return {"error": "Year must be 2024 or earlier"}
+    
+    # Load the necessary datasets
+    df_weekly = pd.read_csv('orders_weeks.csv')
+    df_preprocessed = pd.read_csv('orders_preprocessed_top_items.csv')
+    
+    # Convert 'date' columns to datetime type for both dataframes
+    df_weekly['date'] = pd.to_datetime(df_weekly['date'])
+    df_preprocessed['date'] = pd.to_datetime(df_preprocessed['date'])
+    
+    # Get the week and year of the input date
+    input_week = date.isocalendar().week
+    input_year = date.isocalendar().year
+
+    # Get the 'unit' value for the product from orders_preprocessed_top_items
+    unit_data = df_preprocessed[(df_preprocessed['product_id'] == product_id) & 
+                                (df_preprocessed['date'].apply(lambda d: d.isocalendar().week == input_week and d.isocalendar().year == input_year))]
+    
+    if not unit_data.empty:
+        unit = unit_data.iloc[0]['unit']  # Get the first matching unit
+    else:
+        unit = None  # If no unit found, set as None
+    
+    # Filter df_weekly for matching week, year, and product_id
+    matching_rows = df_weekly[
+        (df_weekly['date'].apply(lambda d: d.isocalendar().week == input_week and d.isocalendar().year == input_year)) & 
+        (df_weekly['product_id'] == product_id)
+    ]
+    
+    # If no matching rows in df_weekly, return a message
+    if matching_rows.empty:
+        return {"message": f"No estimate found for week of {date.date()} (week {input_week}, {input_year})"}
+    
+    # Now return the data, including the 'unit' retrieved from the other dataset
+    matching_rows['unit'] = unit  # Add the unit value to the result
+    return matching_rows[['date', 'quantity', 'unit']]

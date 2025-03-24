@@ -6,3 +6,4 @@ keras==2.13.1
 tensorflow==2.13.1
 prophet
 Gunicorn
+flask-cors
