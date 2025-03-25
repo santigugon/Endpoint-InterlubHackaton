@@ -133,6 +133,8 @@ def give_actual_demand(date, product_id):
     if matching_rows.empty:
         return {"message": f"No estimate found for week of {date.date()} (week {input_week}, {input_year})"}
     
-    # Now return the data, including the 'unit' retrieved from the other dataset
-    matching_rows['unit'] = unit  # Add the unit value to the result
+    # Use `.loc[]` to safely add the 'unit' column
+    matching_rows.loc[:, 'unit'] = unit  # Use .loc[] to avoid the warning
+
+    # Return the result including 'quantity' and 'unit'
     return matching_rows[['date', 'quantity', 'unit']]
